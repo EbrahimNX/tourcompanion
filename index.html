@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0f1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tour Companion">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Tour Companion</title>
+<style>
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0f1a;
+  --surface: #1a1a2e;
+  --surface2: #242440;
+  --surface3: #2e2e52;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0eeff;
+  --text2: #a09ec0;
+  --text3: #6b699a;
+  --accent: #7c6af7;
+  --accent2: #5e4fe0;
+  --accent-glow: rgba(124,106,247,0.25);
+  --gold: #f0b429;
+  --gold-bg: rgba(240,180,41,0.12);
+  --teal: #2dd4b0;
+  --teal-bg: rgba(45,212,176,0.1);
+  --rose: #f06292;
+  --rose-bg: rgba(240,98,146,0.1);
+  --amber: #ff9a3c;
+  --amber-bg: rgba(255,154,60,0.1);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-sm: 0 4px 16px rgba(0,0,0,0.3);
+  --nav-h: 64px;
+}
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* ── SCREENS ── */
+.screen { position: fixed; inset: 0; overflow-y: auto; display: none; flex-direction: column; opacity: 0; transition: opacity 0.3s; }
+.screen.active { display: flex; opacity: 1; }
+.screen-content { flex: 1; overflow-y: auto; padding-bottom: calc(var(--nav-h) + 24px); -webkit-overflow-scrolling: touch; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h);
+  background: rgba(26,26,46,0.92);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 0; cursor: pointer; transition: all 0.2s; opacity: 0.45; color: var(--text2);
+}
+.nav-item.active { opacity: 1; color: var(--accent); }
+.nav-item svg { width: 22px; height: 22px; }
+.nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.03em; }
+
+/* ── HEADER ── */
+.page-header {
+  padding: 52px 20px 20px;
+  background: linear-gradient(180deg, rgba(124,106,247,0.08) 0%, transparent 100%);
+}
+.page-header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+.page-header p { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+/* ── TOURS SCREEN ── */
+.tours-grid { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.tour-card {
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden; cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.tour-card:active { transform: scale(0.98); }
+.tour-card-inner { padding: 18px 18px 16px; }
+.tour-card-top { display: flex; align-items: flex-start; gap: 14px; }
+.tour-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.tour-info { flex: 1; min-width: 0; }
+.tour-name { font-size: 16px; font-weight: 600; line-height: 1.3; }
+.tour-meta { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.tour-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 3px 9px; border-radius: 20px;
+  background: var(--surface2); color: var(--text2);
+  margin-top: 10px; font-weight: 500;
+}
+.tour-bar { height: 3px; background: var(--surface2); border-radius: 2px; margin-top: 14px; overflow: hidden; }
+.tour-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+.tour-arrow {
+  position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; border-radius: 50%; background: var(--surface2);
+  display: flex; align-items: center; justify-content: center; color: var(--text3);
+}
+
+/* ── SCRIPT VIEWER ── */
+.script-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(15,15,26,0.92); backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.back-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface2); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text); flex-shrink: 0; -webkit-tap-highlight-color: transparent;
+}
+.script-header-info { flex: 1; min-width: 0; }
+.script-header-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.script-header-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+.stop-tabs {
+  display: flex; gap: 6px; padding: 12px 16px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.stop-tabs::-webkit-scrollbar { display: none; }
+.stop-tab {
+  flex-shrink: 0; padding: 7px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  background: var(--surface2); color: var(--text2);
+  border: 1px solid transparent; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.stop-tab.active { background: var(--accent); color: #fff; }
+.stop-tab.faq-tab.active { background: var(--gold); color: #1a1a2e; }
+
+.stop-body { padding: 0 16px 16px; }
+.stop-card-view {
+  background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); overflow: hidden; margin-bottom: 10px;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+.stop-section-header {
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.stop-section-icon {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.stop-section-label { font-size: 13px; font-weight: 500; flex: 1; }
+.stop-chevron { color: var(--text3); font-size: 12px; transition: transform 0.2s; }
+.stop-chevron.open { transform: rotate(90deg); }
+
+.stop-section-body { display: none; }
+.stop-section-body.open { display: block; }
+
+.script-text {
+  padding: 0 16px 16px;
+  font-size: 14px; line-height: 1.85; color: var(--text);
+  white-space: pre-wrap; border-top: 1px solid var(--border);
+}
+.tip-text {
+  margin: 0 16px 16px;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  background: rgba(124,106,247,0.1); border: 1px solid rgba(124,106,247,0.2);
+  font-size: 13px; color: #b0a8f8; line-height: 1.6; font-style: italic;
+}
+.tip-text strong { font-style: normal; color: var(--accent); }
+.faq-text {
+  padding: 0 16px 16px;
+  font-size: 14px; line-height: 1.85; color: var(--text);
+  white-space: pre-wrap; border-top: 1px solid var(--border);
+}
+
+.stop-title-big { font-size: 18px; font-weight: 700; padding: 16px 16px 4px; }
+.stop-tag-small { font-size: 12px; color: var(--text2); padding: 0 16px 12px; }
+
+.section-divider { height: 1px; background: var(--border); margin: 0 16px 10px; }
+
+/* progress pill */
+.progress-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; margin-bottom: 4px;
+}
+.progress-dots { display: flex; gap: 4px; flex: 1; }
+.progress-dot {
+  height: 4px; border-radius: 2px; background: var(--surface3); flex: 1;
+  transition: background 0.3s;
+}
+.progress-dot.done { background: var(--accent); }
+.progress-dot.faq-done { background: var(--gold); }
+.progress-label { font-size: 11px; color: var(--text3); white-space: nowrap; }
+
+/* ── NATIONALITY SCREEN ── */
+.nat-header { padding: 52px 20px 16px; }
+.nat-header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+.nat-header p { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+.nat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 16px; }
+.nat-card {
+  border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--border); padding: 20px 16px;
+  cursor: pointer; text-align: center;
+  transition: all 0.18s; -webkit-tap-highlight-color: transparent;
+}
+.nat-card:active { transform: scale(0.96); }
+.nat-card.selected { border-color: var(--accent); background: rgba(124,106,247,0.1); }
+.nat-flag { font-size: 36px; margin-bottom: 8px; }
+.nat-name { font-size: 14px; font-weight: 600; }
+.nat-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+.nat-detail { padding: 0 16px 16px; animation: slideUp 0.3s ease; }
+.nat-section { margin-bottom: 16px; }
+.nat-section-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text3); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.nat-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.nat-chip-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 4px; }
+.nat-chip {
+  font-size: 12px; padding: 5px 11px; border-radius: 20px;
+  background: var(--surface2); color: var(--text2); line-height: 1.4;
+}
+.nat-chip.accent { background: var(--accent-glow); color: #b0a8f8; }
+
+.nat-card-block {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px;
+  margin-bottom: 10px;
+}
+.nat-card-block.gold { border-color: rgba(240,180,41,0.2); background: var(--gold-bg); }
+.nat-card-block.teal { border-color: rgba(45,212,176,0.2); background: var(--teal-bg); }
+.nat-card-block.rose { border-color: rgba(240,98,146,0.2); background: var(--rose-bg); }
+.nat-card-block.amber { border-color: rgba(255,154,60,0.2); background: var(--amber-bg); }
+.nat-card-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 6px; }
+.nat-card-text { font-size: 13px; line-height: 1.7; color: var(--text2); }
+.nat-card-text strong { color: var(--text); font-weight: 600; }
+
+.phrase-item { display: flex; flex-direction: column; gap: 2px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.phrase-item:last-child { border-bottom: none; }
+.phrase-original { font-size: 15px; font-weight: 600; color: var(--teal); }
+.phrase-meaning { font-size: 12px; color: var(--text2); }
+.phrase-context { font-size: 11px; color: var(--text3); font-style: italic; }
+
+.faq-item-block {
+  background: var(--surface2); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 8px;
+}
+.faq-q { font-size: 13px; font-weight: 600; color: var(--gold); margin-bottom: 6px; }
+.faq-a { font-size: 13px; line-height: 1.7; color: var(--text2); }
+
+/* ── SETTINGS SCREEN ── */
+.settings-body { padding: 0 16px 16px; }
+.settings-section { margin-bottom: 20px; }
+.settings-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin-bottom: 10px; padding: 0 4px; }
+.setting-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px; background: var(--surface); border-radius: var(--radius-sm);
+  border: 1px solid var(--border); margin-bottom: 8px;
+}
+.setting-icon { font-size: 20px; width: 36px; text-align: center; }
+.setting-info { flex: 1; }
+.setting-label { font-size: 14px; font-weight: 500; }
+.setting-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.setting-value { font-size: 13px; color: var(--accent); font-weight: 500; }
+
+.about-card {
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(124,106,247,0.08) 100%);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 24px; text-align: center; margin-bottom: 16px;
+}
+.about-logo { font-size: 48px; margin-bottom: 12px; }
+.about-name { font-size: 20px; font-weight: 700; }
+.about-version { font-size: 12px; color: var(--text3); margin-top: 4px; }
+.about-desc { font-size: 13px; color: var(--text2); margin-top: 12px; line-height: 1.6; }
+
+/* ── SPLASH / LOADING ── */
+.splash {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 200; transition: opacity 0.5s;
+}
+.splash-logo { font-size: 64px; margin-bottom: 16px; animation: pulse 2s infinite; }
+.splash-name { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.splash-sub { font-size: 14px; color: var(--text2); margin-top: 6px; }
+.splash-bar { width: 120px; height: 3px; background: var(--surface2); border-radius: 2px; margin-top: 32px; overflow: hidden; }
+.splash-fill { height: 100%; background: var(--accent); border-radius: 2px; animation: load 1.2s ease forwards; }
+@keyframes load { from{width:0} to{width:100%} }
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+
+/* ── MISC ── */
+.empty-state { text-align: center; padding: 60px 24px; color: var(--text3); }
+.empty-state-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+.empty-state p { font-size: 14px; }
+
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+.chip-stop { background: rgba(124,106,247,0.15); color: #b0a8f8; }
+.chip-faq { background: var(--gold-bg); color: var(--gold); }
+.chip-script { background: var(--teal-bg); color: var(--teal); }
+
+.tap-ripple { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.08); transform: scale(0); animation: ripple 0.5s ease; pointer-events: none; }
+@keyframes ripple { to { transform:scale(4); opacity:0; } }
+
+.scroll-hint { text-align:center; font-size:11px; color:var(--text3); padding: 8px 0 0; }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div class="splash" id="splash">
+  <div class="splash-logo">🧭</div>
+  <div class="splash-name">Tour Companion</div>
+  <div class="splash-sub">by Ebrahim</div>
+  <div class="splash-bar"><div class="splash-fill"></div></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="nav-item active" id="nav-tours" onclick="switchTab('tours')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    <span class="nav-label">Tours</span>
+  </div>
+  <div class="nav-item" id="nav-nationality" onclick="switchTab('nationality')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+    <span class="nav-label">Nationalities</span>
+  </div>
+  <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    <span class="nav-label">About</span>
+  </div>
+</nav>
+
+<!-- TOURS SCREEN -->
+<div class="screen active" id="screen-tours">
+  <div class="screen-content">
+    <div class="page-header">
+      <h1>🧭 Tour Companion</h1>
+      <p>Select a tour to open your guide script</p>
+    </div>
+    <div class="tours-grid" id="tours-grid"></div>
+  </div>
+</div>
+
+<!-- SCRIPT VIEWER SCREEN -->
+<div class="screen" id="screen-script">
+  <div class="script-header">
+    <button class="back-btn" onclick="closeScript()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15,18 9,12 15,6"/></svg>
+    </button>
+    <div class="script-header-info">
+      <div class="script-header-title" id="script-header-title">Tour</div>
+      <div class="script-header-sub" id="script-header-sub"></div>
+    </div>
+  </div>
+  <div style="overflow-y:auto; flex:1; padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="progress-pill" id="progress-pill"></div>
+    <div class="stop-tabs" id="stop-tabs"></div>
+    <div class="stop-body" id="stop-body"></div>
+  </div>
+</div>
+
+<!-- NATIONALITY SCREEN -->
+<div class="screen" id="screen-nationality">
+  <div class="screen-content">
+    <div class="nat-header">
+      <h1>🌍 Group Intel</h1>
+      <p>Select nationality to get cultural briefing</p>
+    </div>
+    <div class="nat-grid" id="nat-grid"></div>
+    <div class="nat-detail" id="nat-detail" style="display:none"></div>
+  </div>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div class="screen" id="screen-settings">
+  <div class="screen-content">
+    <div class="page-header">
+      <h1>About</h1>
+      <p>Tour Companion</p>
+    </div>
+    <div class="settings-body">
+      <div class="about-card">
+        <div class="about-logo">🧭</div>
+        <div class="about-name">Tour Companion</div>
+        <div class="about-version">Version 1.0 · Sharm el-Sheikh</div>
+        <div class="about-desc">Your personal guide script library and cultural briefing tool. Built for Ebrahim — covering 6 tours across South Sinai and Cairo.</div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Tours loaded</div>
+        <div id="settings-tours-list"></div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Nationalities</div>
+        <div class="setting-row">
+          <div class="setting-icon">🌍</div>
+          <div class="setting-info"><div class="setting-label">4 nationalities</div><div class="setting-sub">Romanian, Polish, Czech, Portuguese</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// TOURS DATA
+// ═══════════════════════════════════════════════
+const TOUR_META = {
+  cairo: { name: "Cairo Day Trip", icon: "🏺", color: "#f0b429", desc: "GEM + Pyramids of Giza", stops_label: "9 stops · Full day", bar_color: "#f0b429" },
+  city_tour: { name: "Sharm City Tour", icon: "🕌", color: "#7c6af7", desc: "Mosque · Church · Old Market · Farsha", stops_label: "6 stops · Half day", bar_color: "#7c6af7" },
+  ras_mohamed: { name: "Ras Mohamed", icon: "🤿", color: "#2dd4b0", desc: "National Park · Red Sea · White Island", stops_label: "7 stops + 8 FAQ", bar_color: "#2dd4b0" },
+  desert_safari: { name: "Desert Safari", icon: "🏜️", color: "#ff9a3c", desc: "ATVs · Bedouin · Canyon · Dinner show", stops_label: "6 stops + 8 FAQ", bar_color: "#ff9a3c" },
+  nabq: { name: "Nabq Mini Safari", icon: "🌿", color: "#4ade80", desc: "Mangroves · Canyons · Shipwreck", stops_label: "6 stops", bar_color: "#4ade80" },
+  magic_dahab: { name: "Magic Dahab", icon: "🐪", color: "#f06292", desc: "Oasis · Camels · Canyon · Boat", stops_label: "7 stops", bar_color: "#f06292" },
+};
+
+</script>
+<script src="tours_data.js"></script>
+<script>
+
+// ═══════════════════════════════════════════════
+// NATIONALITY DATA
+// ═══════════════════════════════════════════════
+const NATIONALITIES = {
+  romanian: {
+    flag: "🇷🇴", name: "Romanian", sub: "România",
+    opener: "Bună ziua! — Good day in Romanian. Use it when you board the bus and watch their faces light up.",
+    cultural_notes: [
+      { type: "gold", label: "Religion connection", text: "Romanians are predominantly <strong>Orthodox Christian</strong> — the same ancient tradition as the Coptic Church you'll visit. When you explain that Saint Mark founded the Egyptian church in 42 AD, <strong>before Rome</strong>, Orthodox Romanians genuinely feel that. It's their tradition too, just a different branch." },
+      { type: "teal", label: "Shared history resonance", text: "Both Egypt and Romania were <strong>occupied by foreign powers</strong> for generations — Ottomans in both cases. Both built national identity under occupation. This parallel lands surprisingly well when you frame it: 'We both know what it means to keep your culture alive when someone else is in charge.'" },
+      { type: "rose", label: "Communist memory", text: "Romanians remember Ceaușescu's regime acutely. They understand <strong>state control, propaganda, and sudden transformation</strong>. When you explain how Egypt changed after 1952 or how Sharm was built from nothing by government policy, they follow the logic quickly — they've lived versions of it." },
+      { type: "amber", label: "Ceaușescu–Sadat connection", text: "Nicolae Ceaușescu had a <strong>personal diplomatic friendship</strong> with Anwar Sadat. Romania maintained warm relations with Egypt during the Cold War when other Eastern Bloc countries were more aligned with Soviet clients in the Arab world. Older Romanians know this. Mentioning it gets a reaction." },
+    ],
+    questions: [
+      { q: "Is Egypt safe right now with everything happening nearby?", a: "South Sinai is geographically and operationally separate from the areas of tension. The local economy depends entirely on tourism — everyone here has a direct interest in your safety. Sharm has maintained its safety record consistently. The conflict in Gaza is 400km away and Egypt is a mediator, not a participant." },
+      { q: "Why do Egyptians still use Pharaonic symbols if they're Muslim?", a: "Because Egyptian identity predates Islam by 5,000 years. The Pharaonic heritage belongs to all Egyptians regardless of religion — it's national identity, not religious. Egyptians are proud to be descendants of the people who built the pyramids. Islam is a commitment to God. The pyramids are pride in ancestors. These don't conflict." },
+      { q: "How similar is Coptic Christianity to our Orthodox faith?", a: "Very close in spirit and practice — icons, incense, liturgy, Marian devotion, ancient liturgical language. The split happened in 451 AD at the Council of Chalcedon over a theological disagreement about the nature of Christ. The Coptic Church went one way, the rest of Eastern Christianity another. But the DNA is shared." },
+      { q: "Do Egyptians know Romania?", a: "More than you'd expect. The Ceaușescu–Sadat diplomatic relationship left a real impression. Romanian workers have passed through Egypt in various industries. And Romanians tend to ask better questions than average tourists — Egyptians notice that." },
+    ],
+    phrases: [
+      { original: "Bună ziua", meaning: "Good day", context: "Opening greeting — use it on the bus, guaranteed smiles" },
+      { original: "Mulțumesc", meaning: "Thank you", context: "They'll be surprised you know this" },
+      { original: "Frumos", meaning: "Beautiful", context: "Use when describing the Red Sea or the mountains" },
+      { original: "Noroc", meaning: "Cheers / Good luck", context: "At dinner if anyone raises a glass" },
+      { original: "Ahlan wa sahlan", meaning: "Welcome (Arabic)", context: "Teach them this — they'll use it all week" },
+      { original: "Shukran", meaning: "Thank you (Arabic)", context: "Teach them for the Bedouin tent" },
+    ],
+    surprise_facts: [
+      "Romania and Egypt both celebrate the Orthodox Easter — it falls on the same date every year. If your group visits near Easter, acknowledge it.",
+      "The Danube Delta in Romania and the Nile Delta in Egypt are both UNESCO biosphere reserves — two of Europe/Africa's great river deltas. A parallel worth mentioning.",
+      "Dracula's castle region (Transylvania) gets about the same number of annual visitors as the Pyramids of Giza — roughly 1.5 million. Two entirely different reasons, same number. Egyptians find this funny.",
+    ]
+  },
+  polish: {
+    flag: "🇵🇱", name: "Polish", sub: "Polska",
+    opener: "Dzień dobry! — Good morning in Polish. Opens the day well.",
+    cultural_notes: [
+      { type: "gold", label: "Catholic connection", text: "Poland is <strong>deeply Catholic</strong> — one of the most observant Catholic countries in Europe. When explaining the mosque, frame modesty and ritual prayer as universal religious instincts, not foreign ones. When at the Coptic church, note that <strong>Pope John Paul II visited Egypt</strong> in 2000 and met the Coptic Pope — a moment of rare Christian unity that Polish Catholics remember." },
+      { type: "teal", label: "Solidarity with struggle", text: "Poles have an acute historical consciousness of <strong>occupation, partition, and national survival</strong>. Egypt's story — occupied by the British, the Israelis, rebuilt after independence — resonates. The idea of a country that was divided and then rebuilt its identity is not abstract to a Polish group." },
+      { type: "rose", label: "WWII connection", text: "The <strong>Polish II Corps under General Anders</strong> passed through the Middle East in WWII — through Egypt, Palestine, and North Africa on their way to Monte Cassino. Some Polish families have ancestors who trained in Egyptian desert camps near Cairo. If you sense history buffs in the group, this detail is extraordinary." },
+      { type: "amber", label: "Skepticism of authority", text: "Polish guests often have a <strong>healthy distrust of official narratives</strong> shaped by decades of communist propaganda. They appreciate when you give them the real, complicated story — not the tourist version. Be direct. They respect honesty over polish." },
+    ],
+    questions: [
+      { q: "Why don't we see women's faces here?", a: "It depends on where you are. In Sharm, most women show their faces. Among the Bedouin, full face covering is a deep cultural tradition of dignity and honor — not imposed, but chosen and meaningful within their community. Egypt has a wide spectrum from fully covered to entirely uncovered." },
+      { q: "Is the food safe? We're worried about stomach problems.", a: "At established venues — yes. Stick to bottled water, avoid raw salads from street stalls. The heat here means food spoils faster than in Poland. Eat where tourists eat until your stomach adjusts, usually 2-3 days." },
+      { q: "How are Christians treated in Egypt?", a: "Coptic Christians are about 10% of the population — around 10 million people. Daily life is mostly normal coexistence. There have been serious incidents — church bombings — and the government response has been inconsistent. It's a complicated picture, not a simple one in either direction." },
+      { q: "Did Poles ever come through Egypt?", a: "Yes — the Anders Army, the Polish II Corps, passed through Egypt in 1942-43 on their way to fight in Italy. Thousands of Polish soldiers trained in the Egyptian desert. Some Polish military cemeteries exist in Egypt. It's one of the lesser-known chapters of Polish WWII history." },
+    ],
+    phrases: [
+      { original: "Dzień dobry", meaning: "Good morning/day", context: "Morning greeting — use when they board" },
+      { original: "Dziękuję", meaning: "Thank you", context: "They'll appreciate the effort" },
+      { original: "Piękny", meaning: "Beautiful (masc.)", context: "For the view, the reef, the sunset" },
+      { original: "Na zdrowie", meaning: "Cheers", context: "At dinner" },
+      { original: "Ahlan wa sahlan", meaning: "Welcome (Arabic)", context: "Teach them this" },
+      { original: "Yalla", meaning: "Let's go (Arabic)", context: "Most useful Arabic word — they'll use it constantly" },
+    ],
+    surprise_facts: [
+      "Poland and Egypt are almost exactly the same size — Egypt is 1 million km², Poland is 312,000 km². But Poland has 38 million people and Egypt has 105 million. Same land, very different density.",
+      "The Polish city of Kraków has a dragon legend — Smok Wawelski — that involves a cave under a castle. Egyptians have their own cave legends in the Sinai mountains. Different cultures, same human instinct.",
+      "Frederick Chopin never visited Egypt, but his music was performed in Cairo's opera house — one of the oldest opera houses in Africa, opened 1869, the same year the Suez Canal opened.",
+    ]
+  },
+  czech: {
+    flag: "🇨🇿", name: "Czech", sub: "Česká republika",
+    opener: "Dobrý den! — Good day in Czech. Simple and effective.",
+    cultural_notes: [
+      { type: "gold", label: "Secular curiosity", text: "Czech Republic is one of the <strong>most secular countries in Europe</strong> — over 60% identify as non-religious. This means Czech guests may approach mosques and churches with <strong>genuine intellectual curiosity</strong> rather than personal religious feeling. Frame religious content as history, architecture, and anthropology — not devotion — and they'll engage deeply." },
+      { type: "teal", label: "Appreciation for detail", text: "Czechs tend to appreciate <strong>precise, factual information</strong> and are comfortable with complexity. The geological explanations in the canyon, the salinity chemistry of the Red Sea, the mechanics of the mangrove root system — give them the real science. They won't be bored by depth." },
+      { type: "rose", label: "Communist memory (nuanced)", text: "Czechoslovakia under communism maintained <strong>different relations with the Arab world</strong> than Poland — Czech weapons were sold to Egypt and other Arab states during Cold War periods. Some older Czechs may have an awareness of Egypt from this angle. It's an unusual connection worth knowing if it comes up." },
+      { type: "amber", label: "Beer and humor", text: "Czechs have the highest beer consumption per capita in the world. They have a famously <strong>dry, dark sense of humor</strong>. Don't be too earnest. A well-placed ironic observation will earn more trust than enthusiasm. They respect a guide who doesn't oversell." },
+    ],
+    questions: [
+      { q: "How does Islam actually work day-to-day? What are the five pillars?", a: "The five pillars are: the declaration of faith (shahada), the five daily prayers (salat), fasting during Ramadan (sawm), charity (zakat — 2.5% of savings annually), and pilgrimage to Mecca once in a lifetime if able (hajj). These are the structural obligations. How strictly any individual follows them varies enormously — like Christianity anywhere." },
+      { q: "Why are Egyptian streets so chaotic?", a: "Several reasons: population density, rapid urbanization in 50 years that took Europe 200, different cultural relationship with personal space and traffic, and a tradition of negotiating your way through situations rather than following rigid rules. Cairo has 20 million people. It functions — just on different logic than Prague." },
+      { q: "Is the bargaining real or a show for tourists?", a: "Both. The performance is real — the outrage, the counter-offer theater. But the economics underneath it are also real. The starting price is genuinely inflated expecting negotiation. If you pay the first price, you've overpaid and the seller knows it. A fair deal requires the dance." },
+      { q: "How deep is the Red Sea really?", a: "The deepest point is around 3,040 meters. The Gulf of Aqaba — where we are — reaches about 1,850 meters. But the reef where you snorkel is 3-15 meters. The continental shelf drops suddenly — within 50 meters horizontally you can go from reef at 5 meters to open water at 500 meters." },
+    ],
+    phrases: [
+      { original: "Dobrý den", meaning: "Good day", context: "Standard greeting" },
+      { original: "Děkuji", meaning: "Thank you", context: "They'll appreciate it" },
+      { original: "Krásný", meaning: "Beautiful", context: "For the scenery" },
+      { original: "Na zdraví", meaning: "Cheers", context: "At dinner — identical logic to Arabic health toast" },
+      { original: "Marhaba", meaning: "Hello (Arabic)", context: "Casual greeting to teach them" },
+      { original: "Ma'alesh", meaning: "Never mind / It's okay (Arabic)", context: "Most useful phrase in Egypt — Czechs find this concept funny" },
+    ],
+    surprise_facts: [
+      "Franz Kafka — Prague's most famous literary figure — wrote about labyrinths, bureaucracy, and feeling lost in systems. Egypt's Cairo is one of the world's great bureaucratic labyrinths. The two fit together strangely well.",
+      "The Czech Republic has more castles per square kilometer than almost any country in Europe. Egypt has more ancient stone structures per square kilometer than almost any country in Africa. Different timelines, same human impulse to build something that lasts.",
+      "Czech glass and crystal has been exported to the Middle East for centuries — you'll see Czech-influenced glassware in traditional Egyptian homes more often than you'd expect.",
+    ]
+  },
+  portuguese: {
+    flag: "🇵🇹", name: "Portuguese", sub: "Portugal",
+    opener: "Bom dia! — Good morning in Portuguese. They'll love that you know it.",
+    cultural_notes: [
+      { type: "gold", label: "Age of Exploration connection", text: "The Portuguese were the first Europeans to successfully navigate around Africa and into the Indian Ocean — <strong>Vasco da Gama rounded the Cape of Good Hope in 1498</strong>. The Red Sea was the competing route — the one that Egypt controlled through the Suez corridor. Portuguese maritime dominance effectively bypassed Egypt's trade advantage for two centuries. This is history Portuguese people genuinely know and feel proud of." },
+      { type: "teal", label: "Fado and melancholy", text: "Portuguese culture has a concept called <strong>saudade</strong> — a deep emotional longing for something beautiful that is absent or lost. Egyptian culture has something similar in the Arabic concept of <strong>tarab</strong> — emotional transport through music, often tinged with longing. At the oriental dinner, point to this resonance. Both cultures have a music that makes people ache." },
+      { type: "rose", label: "Catholic tradition, softened", text: "Portugal is Catholic but with a <strong>Mediterranean looseness</strong> that's different from Polish Catholicism. Portuguese guests approach religious sites with warmth and aesthetic appreciation rather than doctrinal seriousness. The visual richness of both the mosque and the Coptic church will appeal to a sensibility trained on azulejo tiles and Baroque church interiors." },
+      { type: "amber", label: "Colonial awareness", text: "Portugal held colonies until 1975 — the last major European colonial power. There's a <strong>national conversation about this history</strong> that is still active. Some Portuguese guests may be more attuned than other Europeans to the dynamics of occupation, cultural survival, and the complexity of 'progress' brought by outside powers. Handle the Sinai occupation history thoughtfully." },
+    ],
+    questions: [
+      { q: "The Red Sea — is it really red?", a: "The water in front of you is absolutely blue. The name comes from several theories: a type of red algae called Trichodesmium that blooms seasonally and turns reddish-brown when it dies; an ancient tradition of using colors for cardinal directions (red = south); and the reddish mountains along the Jordanian coast whose reflection tints the water at certain times of day. The Portuguese named many seas romantically — you understand this." },
+      { q: "How does Egypt handle so many tourists and still feel Egyptian?", a: "Sharm is the tourist-facing version. Go 20 kilometers inland and you're in a completely different Egypt. The country has 105 million people — the tourism economy is significant but not the whole story. Cairo, Alexandria, Luxor, the Nile Valley — that's where Egyptian life actually happens. Sharm is the beautiful front door, not the house." },
+      { q: "Why did the Portuguese come to the Red Sea historically?", a: "To break the Egyptian-Venetian monopoly on spice trade with Asia. All goods from India and the Far East came through the Red Sea, through Egypt, through Alexandria to Venice. The Portuguese went around Africa to access Asia directly and cut Egypt out of the equation. It worked — and it changed Egypt's economy dramatically for two centuries until the Suez Canal restored the route in 1869." },
+      { q: "What is the music tonight made of?", a: "The oud — ancestor of the Portuguese guitarra and the lute. The word 'lute' comes from Arabic 'al-oud.' The instrument traveled from Arabia through North Africa to Moorish Spain and Portugal, where it evolved into the guitar family. The music you're about to hear is played on the great-great-grandfather of the instrument that gives fado its sound." },
+    ],
+    phrases: [
+      { original: "Bom dia", meaning: "Good morning", context: "Morning greeting — use it boarding the bus" },
+      { original: "Obrigado/a", meaning: "Thank you (m/f)", context: "They'll appreciate the gender distinction respected" },
+      { original: "Lindo / Linda", meaning: "Beautiful (m/f)", context: "For the sea, the reef, the view" },
+      { original: "Saúde", meaning: "Cheers / Health", context: "At dinner" },
+      { original: "Al-oud", meaning: "The lute (Arabic)", context: "Explain this connection before the show — it lands perfectly" },
+      { original: "Saudade / Tarab", meaning: "Longing through beauty (PT / AR)", context: "Use this parallel at the oriental dinner" },
+    ],
+    surprise_facts: [
+      "The Suez Canal, opened in 1869, effectively ended the Portuguese-pioneered Cape Route's dominance. The canal restored the Red Sea route — the exact route Portugal had made obsolete 370 years earlier. History completing a circle.",
+      "Vasco da Gama's voyage to India in 1498 was partly motivated by intelligence gathered about Egyptian trade routes. He knew exactly what he was trying to bypass.",
+      "The azulejo tile tradition in Portugal was influenced by Moorish ceramic art that traveled through North Africa — the same artistic lineage you see in Egyptian mosque geometric tilework. The visual DNA is related.",
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let currentTab = 'tours';
+let currentTour = null;
+let currentStopIdx = 0;
+let currentNat = null;
+let openSections = {};
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function switchTab(tab) {
+  if (tab === currentTab && tab !== 'tours') return;
+  currentTab = tab;
+  document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const screen = document.getElementById('screen-' + tab);
+  screen.style.display = 'flex';
+  requestAnimationFrame(() => { screen.style.opacity = '1'; screen.classList.add('active'); });
+  document.getElementById('nav-' + tab)?.classList.add('active');
+  if (tab === 'nationality') renderNatGrid();
+  if (tab === 'settings') renderSettings();
+}
+
+// ═══════════════════════════════════════════════
+// TOURS
+// ═══════════════════════════════════════════════
+function renderToursGrid() {
+  const grid = document.getElementById('tours-grid');
+  const order = ['cairo','city_tour','ras_mohamed','desert_safari','nabq','magic_dahab'];
+  grid.innerHTML = order.map(id => {
+    const meta = TOUR_META[id];
+    const data = TOURS[id];
+    const stopCount = data ? data.filter(s=>s.type!=='faq').length : 0;
+    const faqCount = data ? data.filter(s=>s.type==='faq').length : 0;
+    return `
+    <div class="tour-card" onclick="openTour('${id}')">
+      <div class="tour-card-inner">
+        <div class="tour-card-top">
+          <div class="tour-icon" style="background:${meta.color}22;color:${meta.color}">${meta.icon}</div>
+          <div class="tour-info">
+            <div class="tour-name">${meta.name}</div>
+            <div class="tour-meta">${meta.desc}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+          <span class="chip chip-stop">📍 ${stopCount} stops</span>
+          ${faqCount > 0 ? `<span class="chip chip-faq">❓ ${faqCount} FAQ</span>` : ''}
+        </div>
+        <div class="tour-bar" style="margin-top:12px">
+          <div class="tour-bar-fill" style="background:${meta.color};width:100%"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openTour(tourId) {
+  currentTour = tourId;
+  currentStopIdx = 0;
+  openSections = {};
+  const meta = TOUR_META[tourId];
+  document.getElementById('script-header-title').textContent = meta.name;
+  document.getElementById('script-header-sub').textContent = meta.desc;
+  renderStopTabs();
+  renderCurrentStop();
+  document.getElementById('screen-script').scrollTop = 0;
+  switchToScript();
+}
+
+function switchToScript() {
+  document.querySelectorAll('.screen').forEach(s => { s.style.display='none'; s.classList.remove('active'); });
+  const screen = document.getElementById('screen-script');
+  screen.style.display = 'flex';
+  requestAnimationFrame(() => { screen.classList.add('active'); screen.style.opacity='1'; });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+}
+
+function closeScript() {
+  switchTab('tours');
+  document.getElementById('nav-tours').classList.add('active');
+}
+
+function renderStopTabs() {
+  const stops = TOURS[currentTour];
+  const tabs = document.getElementById('stop-tabs');
+  const tripStops = stops.filter(s => s.type !== 'faq');
+  const faqStops = stops.filter(s => s.type === 'faq');
+  const allTabs = [...tripStops, ...faqStops];
+  tabs.innerHTML = allTabs.map((s, i) => {
+    const realIdx = stops.indexOf(s);
+    const isFaq = s.type === 'faq';
+    const label = isFaq ? `❓ ${s.num || 'Q'}` : `${s.num || i+1}`;
+    return `<div class="stop-tab ${isFaq?'faq-tab':''} ${realIdx===currentStopIdx?'active':''}" 
+      onclick="goToStop(${realIdx})" title="${s.title}">${label}</div>`;
+  }).join('');
+  // scroll active tab into view
+  setTimeout(() => {
+    const active = tabs.querySelector('.stop-tab.active');
+    if (active) active.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+  }, 50);
+}
+
+function renderProgressPill() {
+  const stops = TOURS[currentTour];
+  const tripStops = stops.filter(s => s.type !== 'faq');
+  const faqStops = stops.filter(s => s.type === 'faq');
+  const currentStop = stops[currentStopIdx];
+  const isFaq = currentStop && currentStop.type === 'faq';
+  const group = isFaq ? faqStops : tripStops;
+  const posInGroup = group.indexOf(currentStop);
+  const pill = document.getElementById('progress-pill');
+  pill.innerHTML = `
+    <div class="progress-dots">
+      ${group.map((s,i) => `<div class="progress-dot ${i<=posInGroup?(isFaq?'faq-done':'done'):''}"></div>`).join('')}
+    </div>
+    <span class="progress-label">${posInGroup+1} / ${group.length} ${isFaq?'FAQ':'stops'}</span>`;
+}
+
+function goToStop(idx) {
+  currentStopIdx = idx;
+  openSections = {};
+  renderStopTabs();
+  renderCurrentStop();
+  renderProgressPill();
+  document.querySelector('#screen-script > div:nth-child(2)').scrollTop = 0;
+}
+
+function renderCurrentStop() {
+  const stops = TOURS[currentTour];
+  const stop = stops[currentStopIdx];
+  const meta = TOUR_META[currentTour];
+  const body = document.getElementById('stop-body');
+  const isFaq = stop.type === 'faq';
+
+  const typeChip = isFaq 
+    ? `<span class="chip chip-faq">❓ FAQ</span>` 
+    : `<span class="chip chip-stop">📍 Stop ${stop.num}</span>`;
+
+  let sectionsHtml = '';
+  if (stop.sections && stop.sections.length > 0) {
+    stop.sections.forEach((sec, si) => {
+      const secId = `sec_${currentStopIdx}_${si}`;
+      const isOpen = openSections[secId] || si === 0;
+      if (sec.type === 'tip') {
+        sectionsHtml += `<div class="tip-text"><strong>Guide tip:</strong> ${escHtml(sec.text)}</div>`;
+        return;
+      }
+      const icon = sec.type === 'faq' ? '💬' : '📝';
+      const bodyClass = isFaq ? 'faq-text' : 'script-text';
+      sectionsHtml += `
+        <div class="stop-card-view">
+          <div class="stop-section-header" onclick="toggleSection('${secId}', this)">
+            <div class="stop-section-icon" style="background:${meta.color}22;color:${meta.color}">${icon}</div>
+            <div class="stop-section-label">${escHtml(sec.label)}</div>
+            <div class="stop-chevron ${isOpen?'open':''}">›</div>
+          </div>
+          <div class="stop-section-body ${isOpen?'open':''}">
+            <div class="${bodyClass}">${escHtml(sec.text)}</div>
+          </div>
+        </div>`;
+    });
+  } else {
+    sectionsHtml = `<div class="empty-state"><div class="empty-state-icon">📋</div><p>No script content for this stop</p></div>`;
+  }
+
+  // nav buttons
+  const tripStops = stops.filter(s=>s.type!=='faq');
+  const faqStops = stops.filter(s=>s.type==='faq');
+  const curStop = stops[currentStopIdx];
+  const group = curStop.type==='faq' ? faqStops : tripStops;
+  const posInGroup = group.indexOf(curStop);
+  const prevInGroup = posInGroup > 0 ? group[posInGroup-1] : null;
+  const nextInGroup = posInGroup < group.length-1 ? group[posInGroup+1] : null;
+  const prevIdx = prevInGroup ? stops.indexOf(prevInGroup) : -1;
+  const nextIdx = nextInGroup ? stops.indexOf(nextInGroup) : -1;
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px">
+      <div>
+        <div style="display:flex;gap:6px;margin-bottom:6px">${typeChip}</div>
+        <div class="stop-title-big" style="padding:0;font-size:18px;font-weight:700">${escHtml(stop.title)}</div>
+        <div class="stop-tag-small" style="padding:0;margin-top:4px">${escHtml(stop.tag)}</div>
+      </div>
+    </div>
+    ${sectionsHtml}
+    <div class="nav-row" style="display:flex;gap:10px;margin-top:16px">
+      <button onclick="goToStop(${prevIdx})" ${prevIdx<0?'disabled':''} style="flex:1;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--surface);font-size:14px;cursor:pointer;color:var(--text);font-weight:500;${prevIdx<0?'opacity:0.3':''}">← Prev</button>
+      <button onclick="goToStop(${nextIdx})" ${nextIdx<0?'disabled':''} style="flex:1;padding:11px;border:1px solid var(--border);border-radius:10px;background:${nextIdx>=0?meta.color+'22':'var(--surface)'};font-size:14px;cursor:pointer;color:${nextIdx>=0?meta.color:'var(--text)'};font-weight:500;border-color:${nextIdx>=0?meta.color+'44':'var(--border)'};${nextIdx<0?'opacity:0.3':''}">Next →</button>
+    </div>`;
+  renderProgressPill();
+}
+
+function toggleSection(secId, headerEl) {
+  openSections[secId] = !openSections[secId];
+  const body = headerEl.nextElementSibling;
+  const chevron = headerEl.querySelector('.stop-chevron');
+  body.classList.toggle('open', openSections[secId]);
+  chevron.classList.toggle('open', openSections[secId]);
+}
+
+// ═══════════════════════════════════════════════
+// NATIONALITY
+// ═══════════════════════════════════════════════
+function renderNatGrid() {
+  const grid = document.getElementById('nat-grid');
+  grid.innerHTML = Object.entries(NATIONALITIES).map(([id, nat]) => `
+    <div class="nat-card ${currentNat===id?'selected':''}" onclick="selectNat('${id}')">
+      <div class="nat-flag">${nat.flag}</div>
+      <div class="nat-name">${nat.name}</div>
+      <div class="nat-sub">${nat.sub}</div>
+    </div>`).join('');
+}
+
+function selectNat(id) {
+  currentNat = id;
+  renderNatGrid();
+  renderNatDetail(id);
+  setTimeout(() => {
+    document.getElementById('nat-detail').scrollIntoView({behavior:'smooth'});
+  }, 100);
+}
+
+function renderNatDetail(id) {
+  const nat = NATIONALITIES[id];
+  const detail = document.getElementById('nat-detail');
+  detail.style.display = 'block';
+
+  // opener
+  let html = `
+    <div class="nat-card-block" style="border-color:rgba(124,106,247,0.3);background:rgba(124,106,247,0.08);margin-bottom:16px">
+      <div class="nat-card-label">Greeting opener</div>
+      <div class="nat-card-text" style="font-size:16px;font-weight:600;color:var(--accent)">${escHtml(nat.opener)}</div>
+    </div>`;
+
+  // cultural notes
+  html += `<div class="nat-section-title">Cultural notes</div>`;
+  nat.cultural_notes.forEach(note => {
+    html += `<div class="nat-card-block ${note.type}" style="margin-bottom:10px">
+      <div class="nat-card-label">${escHtml(note.label)}</div>
+      <div class="nat-card-text">${note.text}</div>
+    </div>`;
+  });
+
+  // questions
+  html += `<div class="nat-section-title" style="margin-top:20px">Questions they'll ask</div>`;
+  nat.questions.forEach(q => {
+    html += `<div class="faq-item-block">
+      <div class="faq-q">"${escHtml(q.q)}"</div>
+      <div class="faq-a">${escHtml(q.a)}</div>
+    </div>`;
+  });
+
+  // phrases
+  html += `<div class="nat-section-title" style="margin-top:20px">Phrases to use & teach</div>`;
+  html += `<div class="nat-card-block" style="margin-bottom:16px">`;
+  nat.phrases.forEach(p => {
+    html += `<div class="phrase-item">
+      <div class="phrase-original">${escHtml(p.original)}</div>
+      <div class="phrase-meaning">${escHtml(p.meaning)}</div>
+      <div class="phrase-context">${escHtml(p.context)}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // surprise facts
+  html += `<div class="nat-section-title" style="margin-top:4px">Surprise facts to drop</div>`;
+  nat.surprise_facts.forEach((fact, i) => {
+    html += `<div class="nat-card-block teal" style="margin-bottom:10px">
+      <div class="nat-card-label">Fact ${i+1}</div>
+      <div class="nat-card-text">${escHtml(fact)}</div>
+    </div>`;
+  });
+
+  detail.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════
+function renderSettings() {
+  const list = document.getElementById('settings-tours-list');
+  const order = ['cairo','city_tour','ras_mohamed','desert_safari','nabq','magic_dahab'];
+  list.innerHTML = order.map(id => {
+    const meta = TOUR_META[id];
+    const data = TOURS[id];
+    const total = data ? data.length : 0;
+    return `<div class="setting-row">
+      <div class="setting-icon">${meta.icon}</div>
+      <div class="setting-info"><div class="setting-label">${meta.name}</div><div class="setting-sub">${total} stops loaded</div></div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function escHtml(t) {
+  if (!t) return '';
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  renderToursGrid();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+  setTimeout(() => {
+    const splash = document.getElementById('splash');
+    splash.style.opacity = '0';
+    setTimeout(() => splash.style.display = 'none', 500);
+  }, 1400);
+});
+</script>
+</body>
+</html>
